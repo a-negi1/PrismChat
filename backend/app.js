@@ -8,13 +8,18 @@ const uploadRoutes = require("./routes/upload.routes");
 
 const app = express();
 
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "https://prism-chat-5k4w.vercel.app",
+  ...( process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(",").map(s => s.trim())
+        : [] ),
+  ...( process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [] ),
+].filter(Boolean);
+
 app.use(cors({
   origin: function (origin, callback) {
-    const allowed = [
-      process.env.FRONTEND_URL,
-      "http://localhost:5173",
-    ].filter(Boolean);
-    if (!origin || allowed.includes(origin)) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
