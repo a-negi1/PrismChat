@@ -12,6 +12,8 @@ export const useSocket = (
     onGroupUpdated,
     onReactionUpdated,
     onPushNotification,
+    onTyping,
+    onStopTyping,
   } = {}
 ) => {
   const socketRef = useRef(null);
@@ -33,6 +35,8 @@ export const useSocket = (
     if (onGroupUpdated)     socket.on("group_updated",         onGroupUpdated);
     if (onReactionUpdated)  socket.on("reaction_updated",      onReactionUpdated);
     if (onPushNotification) socket.on("push_notification",     onPushNotification);
+    if (onTyping)           socket.on("typing",                onTyping);
+    if (onStopTyping)       socket.on("stop_typing",           onStopTyping);
 
     return () => {
       socket.emit("disconnect_user", userId);
@@ -50,11 +54,13 @@ export const useSocket = (
   const disconnectUser    = ()        => socketRef.current?.emit("disconnect_user",    userId);
   const emitReaction      = (chatId, msg, isGroup) =>
     socketRef.current?.emit("message_reaction", { chatId, message: msg, isGroup });
+  const emitTyping        = (p)       => socketRef.current?.emit("typing",             p);
+  const emitStopTyping    = (p)       => socketRef.current?.emit("stop_typing",        p);
 
   return {
     sendMessage, sendGroupMessage, joinGroup,
     markRead, markGroupRead,
     emitGroupUpdated, emitUserLeftGroup, disconnectUser,
-    emitReaction,
+    emitReaction, emitTyping, emitStopTyping,
   };
 };

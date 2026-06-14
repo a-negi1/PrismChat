@@ -40,43 +40,46 @@ const EmptyState = ({ onOpenSidebar }) => (
 export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpdate }) {
   const [currentUser, setCurrentUser] = useState(initialUser);
 
-  const [chats,        setChats]        = useState([]);
-  const [groups,       setGroups]       = useState([]);
-  const [activeChat,   setActiveChat]   = useState(null);
-  const [messages,     setMessages]     = useState([]);
+  const [chats, setChats] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [unreadCounts, setUnreadCounts] = useState({});
 
-  const [input,       setInput]       = useState("");
-  const [sending,     setSending]     = useState(false);
-  const [uploading,   setUploading]   = useState(false);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [lightboxImg, setLightboxImg] = useState(null);
   const [sharedMedia, setSharedMedia] = useState([]);
-  const [replyTo,     setReplyTo]     = useState(null);
-  const [toasts,      setToasts]      = useState([]);
+  const [replyTo, setReplyTo] = useState(null);
+  const [toasts, setToasts] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAIActive,  setIsAIActive]  = useState(false);
+  const [isAIActive, setIsAIActive] = useState(false);
+
+  const [typingUsers, setTypingUsers] = useState({});
+  const typingTimers = useRef({});
 
   const activeChatRef = useRef(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
 
-  
+
   const addToast = useCallback((toast) => {
     const id = Date.now() + Math.random();
     setToasts((p) => [...p.slice(-3), { ...toast, id }]);
   }, []);
   const dismissToast = useCallback((id) => setToasts((p) => p.filter((t) => t.id !== id)), []);
 
-  
+
   const { handlePushNotification } = useNotifications({
     currentUserId: currentUser._id,
     activeChatRef,
     onToast: addToast,
   });
 
-  
+
   const handleMessage = (newMsg) => {
-    const cur       = activeChatRef.current;
+    const cur = activeChatRef.current;
     const curChatId = cur && !isGroupChat(cur) ? getChatId(currentUser._id, cur._id) : null;
 
     if (newMsg.chatId === curChatId) {
@@ -98,7 +101,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
   };
 
   const handleGroupMessage = (newMsg) => {
-    const cur       = activeChatRef.current;
+    const cur = activeChatRef.current;
     const curChatId = cur && isGroupChat(cur) ? getGroupChatId(cur._id) : null;
 
     if (newMsg.chatId === curChatId) {
@@ -137,18 +140,53 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
   const handleUnreadUpdate = ({ chatId, count }) =>
     setUnreadCounts((p) => ({ ...p, [chatId]: count }));
 
+
+  const handleTyping = useCallback(({ senderId, senderName, receiverId, groupId }) => {
+    const chatId = groupId ? `group_${groupId}` : receiverId;
+
+    const key = groupId ? `group_${groupId}` : [currentUser._id, senderId].sort().join("_");
+    setTypingUsers((p) => {
+      const existing = p[key] || [];
+      if (existing.find((u) => u.senderId === senderId)) return p;
+      return { ...p, [key]: [...existing, { senderId, senderName }] };
+    });
+
+    const timer = `${key}:${senderId}`;
+    if (typingTimers.current[timer]) clearTimeout(typingTimers.current[timer]);
+    typingTimers.current[timer] = setTimeout(() => {
+      setTypingUsers((p) => {
+        const next = { ...p, [key]: (p[key] || []).filter((u) => u.senderId !== senderId) };
+        if (!next[key]?.length) delete next[key];
+        return next;
+      });
+    }, 3000);
+  }, [currentUser._id]);
+
+  const handleStopTyping = useCallback(({ senderId, receiverId, groupId }) => {
+    const key = groupId ? `group_${groupId}` : [currentUser._id, senderId].sort().join("_");
+    const timer = `${key}:${senderId}`;
+    if (typingTimers.current[timer]) clearTimeout(typingTimers.current[timer]);
+    setTypingUsers((p) => {
+      const next = { ...p, [key]: (p[key] || []).filter((u) => u.senderId !== senderId) };
+      if (!next[key]?.length) delete next[key];
+      return next;
+    });
+  }, [currentUser._id]);
+
   const {
     sendMessage: socketSend, sendGroupMessage: socketSendGroup,
     joinGroup, markRead, markGroupRead,
     emitGroupUpdated, emitUserLeftGroup, disconnectUser, emitReaction,
+    emitTyping, emitStopTyping,
   } = useSocket(currentUser._id, {
     onMessage: handleMessage, onGroupMessage: handleGroupMessage,
     onUserStatus: handleUserStatus, onUnreadUpdate: handleUnreadUpdate,
     onGroupUpdated: handleGroupUpdated, onReactionUpdated: handleReactionUpdated,
     onPushNotification: handlePushNotification,
+    onTyping: handleTyping, onStopTyping: handleStopTyping,
   });
 
-  
+
   useEffect(() => {
     api.getUserChats(currentUser._id).then(setChats);
     api.getUserGroups(currentUser._id).then((gs) => {
@@ -158,7 +196,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     api.getUnreadCounts(currentUser._id).then(setUnreadCounts);
   }, [currentUser._id]);
 
-  
+
   useEffect(() => {
     if (!activeChat) return;
     const chatId = isGroupChat(activeChat)
@@ -176,7 +214,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     setUnreadCounts((p) => ({ ...p, [chatId]: 0 }));
   }, [activeChat?._id]);
 
-  
+
   const startChatWith = (user) => {
     const existing = chats.find((c) => c._id === user._id);
     const merged = existing
@@ -204,7 +242,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     selectGroup(group);
   };
 
-  
+
   const handleSend = () => {
     if (!activeChat || !input.trim()) return;
     setSending(true);
@@ -222,7 +260,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     setInput(""); setReplyTo(null); setSending(false);
   };
 
-  
+
   const handleFileUpload = async (e) => {
     const file = e.target?.files?.[0];
     if (!file || !activeChat) return;
@@ -243,7 +281,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     if (e.target) e.target.value = "";
   };
 
-  
+
   const handleReact = async (msg, emoji, action) => {
     if (action === "reply") { setReplyTo(msg); return; }
     try {
@@ -254,7 +292,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     } catch (e) { console.error(e); }
   };
 
-  
+
   const handleGroupUpdatedFromPanel = (updatedGroup) => {
     handleGroupUpdated(updatedGroup);
     emitGroupUpdated(updatedGroup._id, updatedGroup);
@@ -266,14 +304,14 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     setActiveChat(null); setShowProfile(false);
   };
 
-  
+
   const handleChangePhoto = async () => {
     const input = document.createElement("input");
     input.type = "file"; input.accept = "image/*";
     input.onchange = async (e) => {
       const file = e.target.files?.[0]; if (!file) return;
       try {
-        const uploadData  = await api.uploadFile(file);
+        const uploadData = await api.uploadFile(file);
         if (uploadData.error) throw new Error(uploadData.error);
         const updatedUser = await api.updateUserPhoto(currentUser._id, uploadData.secure_url);
         setCurrentUser(updatedUser);
@@ -323,25 +361,27 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
         onClose={() => setSidebarOpen(false)}
       />
 
-      
+
       <div className={cn(
         "flex flex-1 overflow-hidden transition-all min-w-0",
-        "pl-11 md:pl-[calc(2.75rem+18rem)]"   
+        "pl-11 md:pl-[calc(2.75rem+18rem)]"
       )}>
         {isAIActive ? (
-          
+
           <div className="flex flex-col flex-1 h-full overflow-hidden">
-            
+
             <AIChat onBack={() => { setIsAIActive(false); setSidebarOpen(true); }} />
           </div>
         ) : activeChat ? (
-          /* Regular chat */
+
           <div className="flex flex-1 overflow-hidden">
             <div className="flex flex-col flex-1 h-full overflow-hidden min-w-0">
               <ChatHeader
                 activeChat={activeChat}
                 onToggleProfile={() => setShowProfile((p) => !p)}
                 onBack={() => { setActiveChat(null); setSidebarOpen(true); }}
+                typingUsers={typingUsers}
+                currentUserId={currentUser._id}
               />
               <MessageList
                 messages={messages}
@@ -358,10 +398,13 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
                 activeChat={activeChat}
                 replyTo={replyTo} onCancelReply={() => setReplyTo(null)}
                 currentUserId={currentUser._id}
+                currentUserName={currentUser.name}
+                emitTyping={emitTyping}
+                emitStopTyping={emitStopTyping}
               />
             </div>
 
-            
+
             {showProfile && (
               <ProfilePanel
                 activeChat={activeChat}
@@ -375,7 +418,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
             )}
           </div>
         ) : (
-          
+
           <div className="flex-1 flex">
             <EmptyState onOpenSidebar={() => setSidebarOpen(true)} />
           </div>
@@ -383,7 +426,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
       </div>
 
 
-      
+
       <Watermark className="fixed bottom-0 left-0 right-0 z-[60] flex" />
     </div>
   );

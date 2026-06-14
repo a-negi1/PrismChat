@@ -3,6 +3,7 @@ import { Paperclip, Send, X, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import ChatReplyBar from "./ChatReplyBar";
+import { isGroupChat } from "@/utils/helpers";
 
 const ChatInput = ({
   input, setInput,
@@ -11,10 +12,46 @@ const ChatInput = ({
   activeChat,
   replyTo, onCancelReply,
   currentUserId,
+  currentUserName,
+  emitTyping,
+  emitStopTyping,
 }) => {
   const fileRef = useRef();
   const [imgPreview, setImgPreview] = useState(null);
   const [imgFile, setImgFile] = useState(null);
+  const isTypingRef = useRef(false);
+  const typingTimer = useRef(null);
+
+  const stopTypingNow = () => {
+    if (!isTypingRef.current) return;
+    isTypingRef.current = false;
+    if (!activeChat || !emitStopTyping) return;
+    const isGroup = isGroupChat(activeChat);
+    emitStopTyping(
+      isGroup
+        ? { senderId: currentUserId, groupId: activeChat._id }
+        : { senderId: currentUserId, receiverId: activeChat._id }
+    );
+  };
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    if (!activeChat || !emitTyping) return;
+    const isGroup = isGroupChat(activeChat);
+
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      emitTyping(
+        isGroup
+          ? { senderId: currentUserId, senderName: currentUserName, groupId: activeChat._id }
+          : { senderId: currentUserId, senderName: currentUserName, receiverId: activeChat._id }
+      );
+    }
+
+
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(stopTypingNow, 1500);
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -38,8 +75,9 @@ const ChatInput = ({
   };
 
   const handleSend = () => {
+    stopTypingNow();
+    if (typingTimer.current) clearTimeout(typingTimer.current);
     if (imgFile) {
-      // Create a synthetic event-like object for file upload
       onFileUpload({ target: { files: [imgFile] } });
       setImgPreview(null);
       setImgFile(null);
@@ -53,7 +91,7 @@ const ChatInput = ({
     <div className="shrink-0">
       <ChatReplyBar replyTo={replyTo} currentUserId={currentUserId} onCancel={onCancelReply} />
 
-      {/* Image preview */}
+
       {imgPreview && (
         <div className="px-4 pt-2 max-w-4xl mx-auto overflow-hidden">
           <div className="relative w-fit">
@@ -72,7 +110,7 @@ const ChatInput = ({
 
       <div className="border-t border-border bg-card px-4">
         <div className="max-w-4xl mx-auto py-3 flex items-center gap-2">
-          {/* File attach */}
+
           <Button
             variant="outline"
             size="icon"
@@ -96,7 +134,7 @@ const ChatInput = ({
             <textarea
               rows={1}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder={`Message ${activeChat?.name || ""}…`}
               disabled={sending || uploading}
@@ -110,7 +148,7 @@ const ChatInput = ({
             />
           </div>
 
-          {/* Send */}
+
           <Button
             size="icon"
             className="size-9 rounded-full shrink-0"
@@ -123,7 +161,7 @@ const ChatInput = ({
             }
           </Button>
         </div>
-        
+
         <div className="h-7" />
       </div>
     </div>
@@ -131,3 +169,4 @@ const ChatInput = ({
 };
 
 export default ChatInput;
+
