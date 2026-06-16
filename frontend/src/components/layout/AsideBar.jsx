@@ -44,7 +44,7 @@ const AsideBar = ({ user, onSignOut, onChangePhoto, onChangeName }) => {
               />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-52 z-[99999]" side="right" align="end">
+          <DropdownMenuContent className="w-52 z-[99999]" side="top" align="start" sideOffset={8} collisionPadding={12} avoidCollisions>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col gap-0.5">
                 <span className="font-semibold text-sm truncate">{user?.name}</span>
