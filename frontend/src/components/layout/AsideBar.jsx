@@ -17,9 +17,7 @@ const AsideBar = ({ user, onSignOut, onChangePhoto, onChangeName }) => {
   return (
     <aside className="fixed inset-y-0 left-0 w-11 z-[9999] h-svh bg-primary shadow-sm flex flex-col items-center justify-between py-2 px-1">
       
-      <div className="flex items-center justify-center size-8">
-        <span className="text-white text-lg font-bold select-none">P</span>
-      </div>
+      <img src="/logo.png" alt="Logo" className="size-8 object-cover rounded-lg" />
 
       <div className="flex flex-col items-center gap-3">
         

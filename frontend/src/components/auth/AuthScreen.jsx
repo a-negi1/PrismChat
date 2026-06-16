@@ -127,9 +127,7 @@ export default function AuthScreen({ onLogin }) {
         <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
           {/* Card header */}
           <div className="flex flex-col items-center gap-3 pt-8 pb-6 px-6 border-b border-border">
-            <div className="size-11 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <span className="text-primary-foreground font-bold text-xl">P</span>
-            </div>
+            <img src="/logo.png" alt="Logo" className="size-11 shadow-sm object-cover rounded-xl" />
             <div className="text-center">
               <h1 className="font-semibold text-xl">
                 {mode === "login" ? "Welcome back"
