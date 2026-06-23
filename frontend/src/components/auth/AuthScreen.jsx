@@ -13,6 +13,55 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/utils/cn";
 import Watermark from "@/components/ui/Watermark";
+import { Sun, Moon } from "lucide-react";
+
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+
+  const toggle = () => {
+    const next = !isDark;
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(next ? "dark" : "light");
+    localStorage.setItem("prism-theme", next ? "dark" : "light");
+    setIsDark(next);
+  };
+
+  return (
+    <button
+      type="button"
+      aria-label="Toggle theme"
+      onClick={toggle}
+      style={{
+        position: "fixed",
+        top: "14px",
+        right: "14px",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "36px",
+        height: "36px",
+        borderRadius: "50%",
+        border: "1px solid var(--border, #e5e7eb)",
+        background: "var(--card, #fff)",
+        color: "var(--foreground, #111)",
+        cursor: "pointer",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        transition: "background 0.2s, color 0.2s",
+      }}
+    >
+      {isDark ? (
+        <Sun className="h-4 w-4" />
+      ) : (
+        <Moon className="h-4 w-4" />
+      )}
+      <span className="sr-only">Toggle theme</span>
+    </button>
+  );
+}
 
 
 const GoogleIcon = () => (
@@ -122,6 +171,7 @@ export default function AuthScreen({ onLogin }) {
 
   return (
     <div className="min-h-svh flex flex-col items-center justify-center bg-muted/40 p-4 gap-6">
+      <ThemeToggle />
       <div className="w-full max-w-sm">
         {/* Card */}
         <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
