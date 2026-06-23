@@ -13,55 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/utils/cn";
 import Watermark from "@/components/ui/Watermark";
-import { Sun, Moon } from "lucide-react";
-
-function ThemeToggle() {
-  const [isDark, setIsDark] = useState(() =>
-    document.documentElement.classList.contains("dark")
-  );
-
-  const toggle = () => {
-    const next = !isDark;
-    const root = document.documentElement;
-    root.classList.remove("light", "dark");
-    root.classList.add(next ? "dark" : "light");
-    localStorage.setItem("prism-theme", next ? "dark" : "light");
-    setIsDark(next);
-  };
-
-  return (
-    <button
-      type="button"
-      aria-label="Toggle theme"
-      onClick={toggle}
-      style={{
-        position: "fixed",
-        top: "14px",
-        right: "14px",
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "36px",
-        height: "36px",
-        borderRadius: "50%",
-        border: "1px solid var(--border, #e5e7eb)",
-        background: "var(--card, #fff)",
-        color: "var(--foreground, #111)",
-        cursor: "pointer",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-        transition: "background 0.2s, color 0.2s",
-      }}
-    >
-      {isDark ? (
-        <Sun className="h-4 w-4" />
-      ) : (
-        <Moon className="h-4 w-4" />
-      )}
-      <span className="sr-only">Toggle theme</span>
-    </button>
-  );
-}
 
 
 const GoogleIcon = () => (
@@ -170,21 +121,30 @@ export default function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div className="min-h-svh flex flex-col items-center justify-center bg-muted/40 p-4 gap-6">
-      <ThemeToggle />
-      <div className="w-full max-w-sm">
+    <div className="min-h-svh flex flex-col items-center justify-center p-4 gap-6 relative overflow-hidden bg-[#000000] text-white font-sans">
+      
+      <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-[#EC4899]/20 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#6D28D9]/30 blur-[140px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#0D9488]/20 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="w-full max-w-sm relative z-10">
         {/* Card */}
-        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+        <div className="bg-white/[0.02] backdrop-blur-3xl rounded-2xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] overflow-hidden">
           {/* Card header */}
-          <div className="flex flex-col items-center gap-3 pt-8 pb-6 px-6 border-b border-border">
-            <img src="/logo.png" alt="Logo" className="size-11 shadow-sm object-cover rounded-xl" />
+          <div className="flex flex-col items-center gap-3 pt-8 pb-6 px-6 border-b border-white/[0.08]">
+            <div className="relative">
+              <div className="absolute inset-0 bg-[#8B5CF6] blur-xl opacity-50 rounded-full"></div>
+              <div className="size-12 shadow-sm rounded-[14px] border border-white/[0.1] relative z-10 flex items-center justify-center bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] overflow-hidden">
+                <img src="/logo.png" alt="Logo" className="size-full object-cover" />
+              </div>
+            </div>
             <div className="text-center">
-              <h1 className="font-semibold text-xl">
-                {mode === "login" ? "Welcome back"
+              <h1 className="font-semibold text-xl text-white tracking-tight">
+                {mode === "login" ? <>Welcome <span className="text-[#C084FC]">back</span></>
                   : mode === "signup" ? "Create account"
                     : "Reset password"}
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 {mode === "login" ? "Sign in to continue to Prism Chat"
                   : mode === "signup" ? "Join and start chatting in real-time"
                     : "Enter your email and we'll send a reset link"}
@@ -201,7 +161,7 @@ export default function AuthScreen({ onLogin }) {
               <>
                 <Button
                   variant="outline"
-                  className="w-full gap-2.5 h-10"
+                  className="w-full gap-2.5 h-10 bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-[#E4E4E7] hover:text-white backdrop-blur-md transition-colors"
                   onClick={handleGoogle}
                   disabled={gLoading || loading}
                 >
@@ -209,9 +169,9 @@ export default function AuthScreen({ onLogin }) {
                   Continue with Google
                 </Button>
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-border" />
-                  <span className="text-xs text-muted-foreground">or</span>
-                  <div className="flex-1 h-px bg-border" />
+                  <div className="flex-1 h-px bg-white/[0.08]" />
+                  <span className="text-xs text-[#71717A]">or</span>
+                  <div className="flex-1 h-px bg-white/[0.08]" />
                 </div>
               </>
             )}
@@ -222,7 +182,7 @@ export default function AuthScreen({ onLogin }) {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="size-14 rounded-full bg-muted border-2 border-dashed border-border hover:border-primary/50 flex items-center justify-center overflow-hidden transition-colors shrink-0"
+                  className="size-14 rounded-full bg-white/[0.03] border-2 border-dashed border-white/[0.1] hover:border-[#8B5CF6]/50 flex items-center justify-center overflow-hidden transition-colors shrink-0 backdrop-blur-md"
                 >
                   {avatarPrev
                     ? <img src={avatarPrev} alt="avatar" className="size-full object-cover" />
@@ -230,8 +190,8 @@ export default function AuthScreen({ onLogin }) {
                   }
                 </button>
                 <div>
-                  <p className="text-xs font-medium">Profile photo</p>
-                  <button type="button" onClick={() => fileRef.current?.click()} className="text-xs text-primary hover:underline">
+                  <p className="text-xs font-medium text-[#E4E4E7]">Profile photo</p>
+                  <button type="button" onClick={() => fileRef.current?.click()} className="text-xs text-[#C084FC] hover:text-[#D8B4FE] hover:underline transition-colors">
                     Upload image (optional)
                   </button>
                 </div>
@@ -242,10 +202,11 @@ export default function AuthScreen({ onLogin }) {
 
             {mode === "signup" && (
               <div className="grid gap-1.5">
-                <label className="text-sm font-medium">Full Name</label>
+                <label className="text-sm font-medium text-[#E4E4E7]">Full Name</label>
                 <Input
                   placeholder="John Doe"
                   value={name}
+                  className="bg-white/[0.03] border border-white/[0.08] text-white focus-visible:ring-[#8B5CF6]/50 placeholder:text-[#71717A] backdrop-blur-md"
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 />
@@ -254,11 +215,12 @@ export default function AuthScreen({ onLogin }) {
 
 
             <div className="grid gap-1.5">
-              <label className="text-sm font-medium">Email</label>
+              <label className="text-sm font-medium text-[#E4E4E7]">Email</label>
               <Input
                 type="email"
                 placeholder="you@example.com"
                 value={email}
+                className="bg-white/[0.03] border border-white/[0.08] text-white focus-visible:ring-[#8B5CF6]/50 placeholder:text-[#71717A] backdrop-blur-md"
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (mode === "forgot" ? handleForgot() : handleSubmit())}
               />
@@ -268,9 +230,9 @@ export default function AuthScreen({ onLogin }) {
             {mode !== "forgot" && (
               <div className="grid gap-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Password</label>
+                  <label className="text-sm font-medium text-[#E4E4E7]">Password</label>
                   {mode === "login" && (
-                    <button type="button" onClick={() => reset("forgot")} className="text-xs text-primary hover:underline">
+                    <button type="button" onClick={() => reset("forgot")} className="text-xs text-[#818CF8] hover:text-[#A5B4FC] hover:underline transition-colors">
                       Forgot password?
                     </button>
                   )}
@@ -279,6 +241,7 @@ export default function AuthScreen({ onLogin }) {
                   type="password"
                   placeholder="••••••••"
                   value={password}
+                  className="bg-white/[0.03] border border-white/[0.08] text-white focus-visible:ring-[#8B5CF6]/50 placeholder:text-[#71717A] backdrop-blur-md"
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 />
@@ -288,11 +251,12 @@ export default function AuthScreen({ onLogin }) {
 
             {mode === "signup" && (
               <div className="grid gap-1.5">
-                <label className="text-sm font-medium">Confirm Password</label>
+                <label className="text-sm font-medium text-[#E4E4E7]">Confirm Password</label>
                 <Input
                   type="password"
                   placeholder="••••••••"
                   value={confirm}
+                  className="bg-white/[0.03] border border-white/[0.08] text-white focus-visible:ring-[#8B5CF6]/50 placeholder:text-[#71717A] backdrop-blur-md"
                   onChange={(e) => setConfirm(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 />
@@ -301,7 +265,7 @@ export default function AuthScreen({ onLogin }) {
 
 
             <Button
-              className="w-full h-10 mt-1"
+              className="w-full h-10 mt-1 bg-[#7C3AED] hover:bg-[#6D28D9] text-white border-0 shadow-[0_0_15px_rgba(124,58,237,0.3)] hover:shadow-[0_0_20px_rgba(124,58,237,0.5)] transition-shadow"
               onClick={mode === "forgot" ? handleForgot : handleSubmit}
               disabled={loading || gLoading}
             >
@@ -312,27 +276,31 @@ export default function AuthScreen({ onLogin }) {
             </Button>
 
 
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-[#A1A1AA]">
               {mode === "login" && (
                 <>Don't have an account?{" "}
-                  <button onClick={() => reset("signup")} className="text-primary font-medium hover:underline">Sign Up</button>
+                  <button onClick={() => reset("signup")} className="text-[#C084FC] font-medium hover:underline hover:text-[#D8B4FE] transition-colors">Sign Up</button>
                 </>
               )}
               {mode === "signup" && (
                 <>Already have an account?{" "}
-                  <button onClick={() => reset("login")} className="text-primary font-medium hover:underline">Sign In</button>
+                  <button onClick={() => reset("login")} className="text-[#C084FC] font-medium hover:underline hover:text-[#D8B4FE] transition-colors">Sign In</button>
                 </>
               )}
               {mode === "forgot" && (
                 <>Remember it?{" "}
-                  <button onClick={() => reset("login")} className="text-primary font-medium hover:underline">Sign In</button>
+                  <button onClick={() => reset("login")} className="text-[#C084FC] font-medium hover:underline hover:text-[#D8B4FE] transition-colors">Sign In</button>
                 </>
               )}
             </p>
           </div>
         </div>
       </div>
-      <Watermark />
+      <div className="absolute bottom-4 text-[10px] font-medium text-[#52525b] flex gap-1.5 items-center tracking-wide">
+        <span>© 2026</span>
+        <span className="text-[#a78bfa] font-bold">ADHEESH NEGI</span>
+        <span>· All Rights Reserved</span>
+      </div>
     </div>
   );
 }
