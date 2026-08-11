@@ -394,6 +394,8 @@ graph LR
 | `CLOUDINARY_API_KEY` | Backend | Cloudinary credentials |
 | `CLOUDINARY_API_SECRET` | Backend | Cloudinary credentials |
 | `FIREBASE_SERVICE_ACCOUNT` | Backend | JSON key for Firebase Admin SDK |
+| `VITE_GROQ_API_KEY` | Frontend | Groq API key for Prism AI assistant |
+| `VITE_GROQ_MODEL` | Frontend | Groq model ID (default: `openai/gpt-oss-120b`) — change here to swap models without touching source code |
 
 ---
 

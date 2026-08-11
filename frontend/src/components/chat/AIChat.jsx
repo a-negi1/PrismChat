@@ -5,7 +5,8 @@ import { cn } from "@/utils/cn";
 import { formatTime } from "@/utils/helpers";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL   = "llama-3.3-70b-versatile";
+
+const GROQ_MODEL   = import.meta.env.VITE_GROQ_MODEL || "openai/gpt-oss-120b";
 
 const SYSTEM_INSTRUCTION = `You are Prism AI, a friendly assistant built into Prism Chat.
 Help users: write/improve messages, summarize & translate text, brainstorm group names,
@@ -130,10 +131,11 @@ const AIChat = ({ onBack }) => {
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model:       GROQ_MODEL,
-          messages:    groqMessages,
-          temperature: 0.7,
-          max_tokens:  1024,
+          model:            GROQ_MODEL,
+          messages:         groqMessages,
+          temperature:      0.7,
+          max_tokens:       1024,
+          reasoning_effort: "low", 
         }),
       });
 
@@ -142,9 +144,11 @@ const AIChat = ({ onBack }) => {
         throw new Error(errData?.error?.message || `Error ${res.status}`);
       }
 
-      const data  = await res.json();
-      const reply = data.choices?.[0]?.message?.content
+      const data = await res.json();
+      const raw  = data.choices?.[0]?.message?.content
         || "Sorry, I couldn't generate a response.";
+      
+      const reply = raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim() || raw;
 
       setMessages((prev) => [
         ...prev,
@@ -172,8 +176,6 @@ const AIChat = ({ onBack }) => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-
-      {/* Header */}
       <div className="sticky top-0 z-50 flex items-center gap-3 px-4 h-14 border-b border-border bg-card shrink-0">
         <Button variant="ghost" size="icon" className="size-8 lg:hidden shrink-0" onClick={onBack}>
           <ArrowLeft className="size-4" />
