@@ -30,7 +30,13 @@ export const useSocket = (
   useEffect(() => {
     if (!userId) return;
 
-    socketRef.current = io(API_URL);
+    socketRef.current = io(API_URL, {
+
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
     const socket = socketRef.current;
 
     const handleConnect = () => socket.emit("setup", userId);

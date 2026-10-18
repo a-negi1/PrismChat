@@ -19,6 +19,11 @@ const initSocket = (server) => {
       origin: socketOrigins,
       credentials: true,
     },
+
+    transports: ["websocket", "polling"],
+    allowUpgrades: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   io.on("connection", (socket) => {
