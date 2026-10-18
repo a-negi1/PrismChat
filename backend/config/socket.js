@@ -189,6 +189,46 @@ const initSocket = (server) => {
         });
       }
     });
+
+
+    socket.on("call:initiate", ({ callerId, callerName, callerPhoto, calleeId, callType }) => {
+      io.to(calleeId).emit("call:incoming", { callerId, callerName, callerPhoto, calleeId, callType });
+    });
+
+
+    socket.on("call:accepted", ({ callerId, calleeId }) => {
+      io.to(callerId).emit("call:accepted", { calleeId });
+    });
+
+
+    socket.on("call:reject", ({ callerId, calleeId }) => {
+      io.to(callerId).emit("call:rejected", { calleeId });
+    });
+
+
+    socket.on("call:offer", ({ calleeId, offer, callType }) => {
+      io.to(calleeId).emit("call:offer", { offer, callType });
+    });
+
+
+    socket.on("call:answer", ({ callerId, answer }) => {
+      io.to(callerId).emit("call:answer", { answer });
+    });
+
+
+    socket.on("call:ice-candidate", ({ targetId, candidate }) => {
+      io.to(targetId).emit("call:ice-candidate", { candidate });
+    });
+
+
+    socket.on("call:end", ({ targetId }) => {
+      io.to(targetId).emit("call:ended");
+    });
+
+
+    socket.on("call:busy", ({ callerId }) => {
+      io.to(callerId).emit("call:busy");
+    });
   });
 };
 

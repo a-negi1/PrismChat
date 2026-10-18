@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSocket } from "@/hooks/useSocket";
+import { useWebRTC } from "@/hooks/useWebRTC";
 import { useNotifications } from "@/hooks/useNotifications";
 import { api } from "@/services/api";
 import { getChatId, getGroupChatId, isGroupChat } from "@/utils/helpers";
@@ -10,9 +11,10 @@ import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
 import ProfilePanel from "@/components/chat/ProfilePanel";
 import AIChat from "@/components/chat/AIChat";
+import CallModal from "@/components/chat/CallModal";
+import IncomingCallModal from "@/components/chat/IncomingCallModal";
 import Lightbox from "@/components/ui/lightbox";
 import ToastContainer from "@/components/ui/toast";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import Watermark from "@/components/ui/Watermark";
 
@@ -56,20 +58,34 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
   const [toasts, setToasts] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAIActive, setIsAIActive] = useState(false);
-
   const [typingUsers, setTypingUsers] = useState({});
   const typingTimers = useRef({});
 
+
+  const [callState, setCallState] = useState("idle");
+  const [callType, setCallType] = useState("voice");
+  const [callPeer, setCallPeer] = useState(null);
+  const [incomingCallData, setIncomingCallData] = useState(null);
+
+
+  const callStateRef = useRef("idle");
+  const callTypeRef = useRef("voice");
+  const callPeerRef = useRef(null);
+  const incomingRef = useRef(null);
+
+  useEffect(() => { callStateRef.current = callState; }, [callState]);
+  useEffect(() => { callTypeRef.current = callType; }, [callType]);
+  useEffect(() => { callPeerRef.current = callPeer; }, [callPeer]);
+  useEffect(() => { incomingRef.current = incomingCallData; }, [incomingCallData]);
+
   const activeChatRef = useRef(null);
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
-
 
   const addToast = useCallback((toast) => {
     const id = Date.now() + Math.random();
     setToasts((p) => [...p.slice(-3), { ...toast, id }]);
   }, []);
   const dismissToast = useCallback((id) => setToasts((p) => p.filter((t) => t.id !== id)), []);
-
 
   const { handlePushNotification } = useNotifications({
     currentUserId: currentUser._id,
@@ -78,15 +94,13 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
   });
 
 
-  const handleMessage = (newMsg) => {
+
+  const handleMessage = useCallback((newMsg) => {
     const cur = activeChatRef.current;
     const curChatId = cur && !isGroupChat(cur) ? getChatId(currentUser._id, cur._id) : null;
-
     if (newMsg.chatId === curChatId) {
       setMessages((p) => p.find((m) => m._id === newMsg._id) ? p : [...p, newMsg]);
-      markRead(newMsg.chatId);
     }
-
     setChats((prev) => {
       const partnerId = newMsg.chatId.split("_").find((id) => id !== currentUser._id);
       if (!partnerId) return prev;
@@ -98,19 +112,16 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
       }
       return [{ _id: partnerId, name: newMsg.senderName, lastMsg: newMsg, online: true }, ...prev];
     });
-  };
+  }, [currentUser._id]);
 
-  const handleGroupMessage = (newMsg) => {
+  const handleGroupMessage = useCallback((newMsg) => {
     const cur = activeChatRef.current;
     const curChatId = cur && isGroupChat(cur) ? getGroupChatId(cur._id) : null;
-
     if (newMsg.chatId === curChatId) {
       setMessages((p) => p.find((m) => m._id === newMsg._id) ? p : [...p, newMsg]);
-      markGroupRead(newMsg.chatId);
     } else if (newMsg.senderId !== currentUser._id) {
       setUnreadCounts((p) => ({ ...p, [newMsg.chatId]: (p[newMsg.chatId] || 0) + 1 }));
     }
-
     setGroups((prev) => {
       const gId = newMsg.chatId.replace("group_", "");
       const idx = prev.findIndex((g) => g._id === gId);
@@ -119,38 +130,34 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
       updated.splice(idx, 1);
       return [{ ...prev[idx], lastMsg: newMsg }, ...updated];
     });
-  };
+  }, [currentUser._id]);
 
-  const handleReactionUpdated = (updatedMsg) =>
-    setMessages((p) => p.map((m) => m._id === updatedMsg._id ? { ...m, reactions: updatedMsg.reactions } : m));
+  const handleReactionUpdated = useCallback((updatedMsg) =>
+    setMessages((p) => p.map((m) => m._id === updatedMsg._id ? { ...m, reactions: updatedMsg.reactions } : m)),
+    []);
 
-  const handleGroupUpdated = (updatedGroup) => {
+  const handleGroupUpdated = useCallback((updatedGroup) => {
     setGroups((p) => p.map((g) => g._id === updatedGroup._id ? { ...g, ...updatedGroup } : g));
     setActiveChat((cur) => cur && isGroupChat(cur) && cur._id === updatedGroup._id ? { ...cur, ...updatedGroup } : cur);
-  };
+  }, []);
 
-  const handleUserStatus = ({ userId, online, lastSeen }) => {
+  const handleUserStatus = useCallback(({ userId, online, lastSeen }) => {
     const id = userId?.toString?.() ?? userId;
     setChats((p) => p.map((c) => c._id === id ? { ...c, online, lastSeen } : c));
-    setActiveChat((cur) =>
-      cur && !isGroupChat(cur) && cur._id === id ? { ...cur, online, lastSeen } : cur
-    );
-  };
+    setActiveChat((cur) => cur && !isGroupChat(cur) && cur._id === id ? { ...cur, online, lastSeen } : cur);
+  }, []);
 
-  const handleUnreadUpdate = ({ chatId, count }) =>
-    setUnreadCounts((p) => ({ ...p, [chatId]: count }));
+  const handleUnreadUpdate = useCallback(({ chatId, count }) =>
+    setUnreadCounts((p) => ({ ...p, [chatId]: count })),
+    []);
 
-
-  const handleTyping = useCallback(({ senderId, senderName, receiverId, groupId }) => {
-    const chatId = groupId ? `group_${groupId}` : receiverId;
-
+  const handleTyping = useCallback(({ senderId, senderName, groupId }) => {
     const key = groupId ? `group_${groupId}` : [currentUser._id, senderId].sort().join("_");
     setTypingUsers((p) => {
       const existing = p[key] || [];
       if (existing.find((u) => u.senderId === senderId)) return p;
       return { ...p, [key]: [...existing, { senderId, senderName }] };
     });
-
     const timer = `${key}:${senderId}`;
     if (typingTimers.current[timer]) clearTimeout(typingTimers.current[timer]);
     typingTimers.current[timer] = setTimeout(() => {
@@ -162,7 +169,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     }, 3000);
   }, [currentUser._id]);
 
-  const handleStopTyping = useCallback(({ senderId, receiverId, groupId }) => {
+  const handleStopTyping = useCallback(({ senderId, groupId }) => {
     const key = groupId ? `group_${groupId}` : [currentUser._id, senderId].sort().join("_");
     const timer = `${key}:${senderId}`;
     if (typingTimers.current[timer]) clearTimeout(typingTimers.current[timer]);
@@ -173,18 +180,131 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     });
   }, [currentUser._id]);
 
+
+  const webrtcRef = useRef(null);
+  const emitCallBusyRef = useRef(null);
+  const emitCallRejectRef = useRef(null);
+  const emitCallEndRef = useRef(null);
+
+  const handleCallIncoming = useCallback((data) => {
+    if (callStateRef.current !== "idle") {
+      emitCallBusyRef.current?.({ callerId: data.callerId });
+      return;
+    }
+    setIncomingCallData(data);
+    setCallType(data.callType || "voice");
+    setCallState("incoming");
+  }, []);
+
+  const handleCallAccepted = useCallback(async ({ calleeId }) => {
+    setCallState("in-call");
+    try {
+      await webrtcRef.current?.sendOffer({ calleeId, callType: callTypeRef.current });
+    } catch (err) {
+      console.error("sendOffer failed:", err);
+    }
+  }, []);
+
+  const handleCallRejected = useCallback(() => {
+    addToast({ title: "Call declined", body: "The other user declined your call." });
+    webrtcRef.current?.cleanup();
+    setCallState("idle");
+    setCallPeer(null);
+  }, [addToast]);
+
+  const handleCallOffer = useCallback(async ({ offer, callType: ct }) => {
+    setCallType(ct);
+    const callerId = callPeerRef.current?._id || incomingRef.current?.callerId;
+    try {
+      await webrtcRef.current?.handleOffer({ offer, callType: ct, callerId });
+    } catch (err) {
+      console.error("handleOffer failed:", err);
+    }
+    setCallState("in-call");
+  }, []);
+
+  const handleCallAnswer = useCallback(async ({ answer }) => {
+    try {
+      await webrtcRef.current?.handleAnswer({ answer });
+    } catch (err) {
+      console.error("handleAnswer failed:", err);
+    }
+    setCallState("in-call");
+  }, []);
+
+  const handleCallIceCandidate = useCallback(({ candidate }) => {
+    webrtcRef.current?.handleIceCandidate({ candidate });
+  }, []);
+
+  const handleCallEnded = useCallback(() => {
+    webrtcRef.current?.cleanup();
+    setCallState("idle");
+    setCallPeer(null);
+    setIncomingCallData(null);
+    addToast({ title: "Call ended", body: "The call has ended." });
+  }, [addToast]);
+
+  const handleCallBusy = useCallback(() => {
+    addToast({ title: "User is busy", body: "The other user is already in a call." });
+    webrtcRef.current?.cleanup();
+    setCallState("idle");
+    setCallPeer(null);
+  }, [addToast]);
+
+
+
   const {
     sendMessage: socketSend, sendGroupMessage: socketSendGroup,
     joinGroup, markRead, markGroupRead,
     emitGroupUpdated, emitUserLeftGroup, disconnectUser, emitReaction,
     emitTyping, emitStopTyping,
+    emitCallInitiate, emitCallAccepted, emitCallReject,
+    emitCallOffer, emitCallAnswer, emitCallIceCandidate, emitCallEnd, emitCallBusy,
+    socketRef,
   } = useSocket(currentUser._id, {
-    onMessage: handleMessage, onGroupMessage: handleGroupMessage,
-    onUserStatus: handleUserStatus, onUnreadUpdate: handleUnreadUpdate,
-    onGroupUpdated: handleGroupUpdated, onReactionUpdated: handleReactionUpdated,
+    onMessage: handleMessage,
+    onGroupMessage: handleGroupMessage,
+    onUserStatus: handleUserStatus,
+    onUnreadUpdate: handleUnreadUpdate,
+    onGroupUpdated: handleGroupUpdated,
+    onReactionUpdated: handleReactionUpdated,
     onPushNotification: handlePushNotification,
-    onTyping: handleTyping, onStopTyping: handleStopTyping,
+    onTyping: handleTyping,
+    onStopTyping: handleStopTyping,
+    onCallIncoming: handleCallIncoming,
+    onCallAccepted: handleCallAccepted,
+    onCallRejected: handleCallRejected,
+    onCallOffer: handleCallOffer,
+    onCallAnswer: handleCallAnswer,
+    onCallIceCandidate: handleCallIceCandidate,
+    onCallEnded: handleCallEnded,
+    onCallBusy: handleCallBusy,
   });
+
+
+  useEffect(() => {
+    emitCallBusyRef.current = emitCallBusy;
+    emitCallRejectRef.current = emitCallReject;
+    emitCallEndRef.current = emitCallEnd;
+  }, [emitCallBusy, emitCallReject, emitCallEnd]);
+
+
+
+  const webRTC = useWebRTC(socketRef, currentUser._id);
+
+
+  useEffect(() => {
+    webrtcRef.current = webRTC;
+  });
+
+  const {
+    localStream, remoteStream, callActive,
+    audioMuted, videoOff,
+    startCall, acceptCall,
+    toggleMute, toggleVideo,
+    cleanup,
+  } = webRTC;
+
 
 
   useEffect(() => {
@@ -195,7 +315,6 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     });
     api.getUnreadCounts(currentUser._id).then(setUnreadCounts);
   }, [currentUser._id]);
-
 
   useEffect(() => {
     if (!activeChat) return;
@@ -243,6 +362,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
   };
 
 
+
   const handleSend = () => {
     if (!activeChat || !input.trim()) return;
     setSending(true);
@@ -259,7 +379,6 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     else socketSend({ ...payload, receiverId: activeChat._id });
     setInput(""); setReplyTo(null); setSending(false);
   };
-
 
   const handleFileUpload = async (e) => {
     const file = e.target?.files?.[0];
@@ -281,7 +400,6 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     if (e.target) e.target.value = "";
   };
 
-
   const handleReact = async (msg, emoji, action) => {
     if (action === "reply") { setReplyTo(msg); return; }
     try {
@@ -291,7 +409,6 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
       emitReaction(msg.chatId, updated, msg.isGroup);
     } catch (e) { console.error(e); }
   };
-
 
   const handleGroupUpdatedFromPanel = (updatedGroup) => {
     handleGroupUpdated(updatedGroup);
@@ -304,11 +421,10 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     setActiveChat(null); setShowProfile(false);
   };
 
-
   const handleChangePhoto = async () => {
-    const input = document.createElement("input");
-    input.type = "file"; input.accept = "image/*";
-    input.onchange = async (e) => {
+    const inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*";
+    inp.onchange = async (e) => {
       const file = e.target.files?.[0]; if (!file) return;
       try {
         const uploadData = await api.uploadFile(file);
@@ -318,7 +434,7 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
         if (onUserUpdate) onUserUpdate(updatedUser);
       } catch (err) { addToast({ title: "Photo update failed", body: err.message }); }
     };
-    input.click();
+    inp.click();
   };
 
   const handleChangeName = async () => {
@@ -335,17 +451,104 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
 
   const handleSignOut = () => { disconnectUser(); onSignOut(); };
 
-  const hasChatOrAI = activeChat || isAIActive;
+
+
+  const initiateCall = useCallback(async (type) => {
+    if (!activeChat || isGroupChat(activeChat)) return;
+    if (callStateRef.current !== "idle") return;
+
+    setCallType(type);
+    setCallPeer(activeChat);
+    setCallState("outgoing");
+
+    try {
+      await startCall({
+        calleeId: activeChat._id,
+        callerName: currentUser.name,
+        callerPhoto: currentUser.photoURL,
+        callType: type,
+      });
+    } catch (err) {
+      addToast({ title: "Call failed", body: "Could not access microphone/camera. Check permissions." });
+      cleanup();
+      setCallState("idle");
+      setCallPeer(null);
+    }
+  }, [activeChat, currentUser, startCall, cleanup, addToast]);
+
+  const handleAcceptCall = useCallback(async () => {
+    const data = incomingRef.current;
+    if (!data) return;
+    const { callerId, callerName, callerPhoto, callType: ct } = data;
+    setCallPeer({ _id: callerId, name: callerName, photoURL: callerPhoto });
+    setCallState("in-call");
+    setIncomingCallData(null);
+
+    try {
+      await acceptCall({ callerId, callType: ct });
+    } catch (err) {
+      addToast({ title: "Could not join call", body: "Check microphone/camera permissions." });
+      emitCallRejectRef.current?.({ callerId, calleeId: currentUser._id });
+      cleanup();
+      setCallState("idle");
+      setCallPeer(null);
+    }
+  }, [acceptCall, cleanup, addToast, currentUser._id]);
+
+  const handleRejectCall = useCallback(() => {
+    const data = incomingRef.current;
+    if (!data) return;
+    emitCallRejectRef.current?.({ callerId: data.callerId, calleeId: currentUser._id });
+    setCallState("idle");
+    setIncomingCallData(null);
+  }, [currentUser._id]);
+
+  const handleHangUp = useCallback(() => {
+    const peerId = callPeerRef.current?._id || incomingRef.current?.callerId;
+    if (peerId) emitCallEndRef.current?.({ targetId: peerId });
+    cleanup();
+    setCallState("idle");
+    setCallPeer(null);
+    setIncomingCallData(null);
+  }, [cleanup]);
+
+  const isInCall = callState === "in-call" || callState === "outgoing";
 
   return (
     <div className="flex h-full bg-background">
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <Lightbox src={lightboxImg} onClose={() => setLightboxImg(null)} />
 
-      {/* Narrow aside bar */}
+
+      {callState === "incoming" && incomingCallData && (
+        <IncomingCallModal
+          caller={incomingCallData}
+          callType={callType}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+        />
+      )}
+
+
+      {isInCall && (
+        <CallModal
+          callType={callType}
+          callActive={callActive}
+          remoteUser={callPeer}
+          localStream={localStream}
+          remoteStream={remoteStream}
+          audioMuted={audioMuted}
+          videoOff={videoOff}
+          onToggleMute={toggleMute}
+          onToggleVideo={toggleVideo}
+          onHangUp={handleHangUp}
+        />
+      )}
+
+
       <AsideBar user={currentUser} onSignOut={handleSignOut} onChangePhoto={handleChangePhoto} onChangeName={handleChangeName} />
 
-      {/* Chat sidebar */}
+
       <ChatSidebar
         currentUser={currentUser}
         chats={chats}
@@ -361,19 +564,15 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
         onClose={() => setSidebarOpen(false)}
       />
 
-
       <div className={cn(
         "flex flex-1 overflow-hidden transition-all min-w-0",
         "pl-11 md:pl-[calc(2.75rem+18rem)]"
       )}>
         {isAIActive ? (
-
           <div className="flex flex-col flex-1 h-full overflow-hidden">
-
             <AIChat onBack={() => { setIsAIActive(false); setSidebarOpen(true); }} />
           </div>
         ) : activeChat ? (
-
           <div className="flex flex-1 overflow-hidden">
             <div className="flex flex-col flex-1 h-full overflow-hidden min-w-0">
               <ChatHeader
@@ -382,6 +581,9 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
                 onBack={() => { setActiveChat(null); setSidebarOpen(true); }}
                 typingUsers={typingUsers}
                 currentUserId={currentUser._id}
+                onStartVoiceCall={() => initiateCall("voice")}
+                onStartVideoCall={() => initiateCall("video")}
+                callInProgress={callState !== "idle"}
               />
               <MessageList
                 messages={messages}
@@ -404,7 +606,6 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
               />
             </div>
 
-
             {showProfile && (
               <ProfilePanel
                 activeChat={activeChat}
@@ -418,14 +619,11 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
             )}
           </div>
         ) : (
-
           <div className="flex-1 flex">
             <EmptyState onOpenSidebar={() => setSidebarOpen(true)} />
           </div>
         )}
       </div>
-
-
 
       <Watermark className="fixed bottom-0 left-0 right-0 z-[60] flex" />
     </div>

@@ -1,4 +1,4 @@
-import { ArrowLeft, Info, Bot } from "lucide-react";
+import { ArrowLeft, Info, Bot, Phone, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AvatarWithBadge from "@/components/AvatarWithBadge";
 import { isGroupChat, formatLastSeen } from "@/utils/helpers";
@@ -17,7 +17,17 @@ const TypingDots = () => (
   </span>
 );
 
-const ChatHeader = ({ activeChat, onToggleProfile, onBack, isAI = false, typingUsers = {}, currentUserId }) => {
+const ChatHeader = ({
+  activeChat,
+  onToggleProfile,
+  onBack,
+  isAI = false,
+  typingUsers = {},
+  currentUserId,
+  onStartVoiceCall,
+  onStartVideoCall,
+  callInProgress = false,
+}) => {
   if (isAI) {
     return (
       <div className="sticky top-0 z-50 flex items-center gap-3 px-4 h-14 border-b border-border bg-card shrink-0">
@@ -40,14 +50,14 @@ const ChatHeader = ({ activeChat, onToggleProfile, onBack, isAI = false, typingU
   const src = activeChat.photoURL || "";
   const isOnline = !isGroup && activeChat.online === true;
 
-  // Derive the chat key to look up typing users
+
   const chatKey = isGroup
     ? `group_${activeChat._id}`
     : [currentUserId, activeChat._id].sort().join("_");
   const whoTyping = typingUsers[chatKey] || [];
   const isTyping = whoTyping.length > 0;
 
-  // Build typing label
+
   let typingLabel = "";
   if (isTyping) {
     if (!isGroup) {
@@ -66,6 +76,9 @@ const ChatHeader = ({ activeChat, onToggleProfile, onBack, isAI = false, typingU
     : isOnline
       ? "Active now"
       : formatLastSeen(activeChat.lastSeen);
+
+
+  const showCallButtons = !isGroup && !callInProgress;
 
   return (
     <div className="sticky top-0 z-50 flex items-center gap-3 px-4 h-14 border-b border-border bg-card shrink-0">
@@ -88,6 +101,32 @@ const ChatHeader = ({ activeChat, onToggleProfile, onBack, isAI = false, typingU
           </p>
         )}
       </div>
+
+
+      {showCallButtons && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground hover:text-primary"
+            onClick={onStartVoiceCall}
+            id="header-voice-call-btn"
+            title="Voice call"
+          >
+            <Phone className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0 text-muted-foreground hover:text-primary"
+            onClick={onStartVideoCall}
+            id="header-video-call-btn"
+            title="Video call"
+          >
+            <Video className="size-4" />
+          </Button>
+        </>
+      )}
 
       <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={onToggleProfile} title="Info">
         <Info className="size-4" />
