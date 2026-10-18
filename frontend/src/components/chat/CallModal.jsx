@@ -86,7 +86,8 @@ const CallModal = ({
       )}
 
 
-      {callType === "video" && remoteStream ? (
+
+      {callType === "video" && (
         <video
           ref={remoteVideoRef}
           className="call-remote-video"
@@ -94,50 +95,58 @@ const CallModal = ({
           playsInline
           muted={speakerMuted}
           id="remote-video"
+          style={{ display: remoteStream ? "block" : "none" }}
         />
-      ) : (
+      )}
+
+
+      {callType === "video" && !remoteStream && (
+        <div className="call-remote-placeholder" />
+      )}
+
+
+      {callType === "voice" && (
         <div className="call-remote-placeholder">
-          {callType !== "video" && (
-            <div className="call-center-avatar">
-              <div className="call-center-avatar-img">
-                {remoteUser?.photoURL
-                  ? <img src={remoteUser.photoURL} alt={remoteUser.name} />
-                  : initial
-                }
-              </div>
-              <p className="call-center-name">{remoteUser?.name}</p>
-              {callActive ? (
-                <div className={`call-sound-wave ${audioMuted ? "paused" : ""}`}>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="call-sound-wave-bar" />
-                  ))}
-                </div>
-              ) : (
-                <p className="call-center-status">
-                  Connecting
-                  <span className="connecting-dots">
-                    <span>.</span><span>.</span><span>.</span>
-                  </span>
-                </p>
-              )}
+          <div className="call-center-avatar">
+            <div className="call-center-avatar-img">
+              {remoteUser?.photoURL
+                ? <img src={remoteUser.photoURL} alt={remoteUser.name} />
+                : initial
+              }
             </div>
-          )}
+            <p className="call-center-name">{remoteUser?.name}</p>
+            {callActive ? (
+              <div className={`call-sound-wave ${audioMuted ? "paused" : ""}`}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="call-sound-wave-bar" />
+                ))}
+              </div>
+            ) : (
+              <p className="call-center-status">
+                Connecting
+                <span className="connecting-dots">
+                  <span>.</span><span>.</span><span>.</span>
+                </span>
+              </p>
+            )}
+          </div>
         </div>
       )}
 
 
       {callType === "video" && (
         <div className="call-local-video-wrap" id="local-video-pip">
-          {localStream && !videoOff ? (
-            <video
-              ref={localVideoRef}
-              className="call-local-video"
-              autoPlay
-              playsInline
-              muted
-              id="local-video"
-            />
-          ) : (
+
+          <video
+            ref={localVideoRef}
+            className="call-local-video"
+            autoPlay
+            playsInline
+            muted
+            id="local-video"
+            style={{ display: localStream && !videoOff ? "block" : "none" }}
+          />
+          {(!localStream || videoOff) && (
             <div className="call-local-placeholder">{initial}</div>
           )}
         </div>
@@ -166,23 +175,8 @@ const CallModal = ({
       </div>
 
 
-      {callType === "video" && !remoteStream && (
-        <div className="call-center-avatar">
-          <div className="call-center-avatar-img">
-            {remoteUser?.photoURL
-              ? <img src={remoteUser.photoURL} alt={remoteUser.name} />
-              : initial
-            }
-          </div>
-          <p className="call-center-name">{remoteUser?.name}</p>
-          <p className="call-center-status">
-            Connecting
-            <span className="connecting-dots">
-              <span>.</span><span>.</span><span>.</span>
-            </span>
-          </p>
-        </div>
-      )}
+
+
 
 
       <div className="call-controls">
