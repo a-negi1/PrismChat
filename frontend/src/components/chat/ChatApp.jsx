@@ -212,9 +212,8 @@ export default function ChatApp({ currentUser: initialUser, onSignOut, onUserUpd
     setCallPeer(null);
   }, [addToast]);
 
-  const handleCallOffer = useCallback(async ({ offer, callType: ct }) => {
+  const handleCallOffer = useCallback(async ({ offer, callType: ct, callerId }) => {
     setCallType(ct);
-    const callerId = callPeerRef.current?._id || incomingRef.current?.callerId;
     try {
       await webrtcRef.current?.handleOffer({ offer, callType: ct, callerId });
     } catch (err) {

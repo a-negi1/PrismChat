@@ -3,11 +3,12 @@ import { useRef, useState, useCallback, useEffect } from "react";
 
 const ICE_SERVERS = {
   iceServers: [
-
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun.cloudflare.com:3478" },
-
+    { urls: "stun:stun.stunprotocol.org:3478" },
     {
       urls: "turn:openrelay.metered.ca:80",
       username: "openrelayproject",
@@ -27,6 +28,16 @@ const ICE_SERVERS = {
       urls: "turns:openrelay.metered.ca:443",
       username: "openrelayproject",
       credential: "openrelayproject",
+    },
+    {
+      urls: "turn:freeturn.net:3479",
+      username: "free",
+      credential: "free",
+    },
+    {
+      urls: "turns:freeturn.tel:5350",
+      username: "free",
+      credential: "free",
     },
   ],
   iceCandidatePoolSize: 10,
@@ -148,8 +159,13 @@ export function useWebRTC(socketRef, currentUserId) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    socketRef.current?.emit("call:offer", { calleeId, offer, callType });
-  }, [socketRef]);
+    socketRef.current?.emit("call:offer", {
+      callerId: currentUserId,
+      calleeId,
+      offer,
+      callType,
+    });
+  }, [socketRef, currentUserId]);
 
 
 
@@ -168,9 +184,13 @@ export function useWebRTC(socketRef, currentUserId) {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
-    socketRef.current?.emit("call:answer", { callerId, answer });
+    socketRef.current?.emit("call:answer", {
+      callerId,
+      calleeId: currentUserId,
+      answer,
+    });
     setCallActive(true);
-  }, [socketRef]);
+  }, [socketRef, currentUserId]);
 
 
 

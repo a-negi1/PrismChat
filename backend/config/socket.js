@@ -211,13 +211,13 @@ const initSocket = (server) => {
     });
 
 
-    socket.on("call:offer", ({ calleeId, offer, callType }) => {
-      io.to(calleeId).emit("call:offer", { offer, callType });
+    socket.on("call:offer", ({ callerId, calleeId, offer, callType }) => {
+      io.to(calleeId).emit("call:offer", { offer, callType, callerId });
     });
 
 
-    socket.on("call:answer", ({ callerId, answer }) => {
-      io.to(callerId).emit("call:answer", { answer });
+    socket.on("call:answer", ({ callerId, calleeId, answer }) => {
+      io.to(callerId).emit("call:answer", { answer, calleeId });
     });
 
 
